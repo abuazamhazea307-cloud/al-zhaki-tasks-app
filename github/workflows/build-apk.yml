@@ -24,14 +24,16 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
 
-    # إنشاء مفتاح توقيع مؤقت لضمان نجاح التوقيع
-    - name: Generate Debug Keystore
+    # إنشاء ملف debug.keystore في الجذر (rootDir) تماماً كما يطلبه app/build.gradle.kts
+    - name: Generate Required Debug Keystore
       run: |
         keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
+    # بناء النسخة باستدعاء التجميع المباشر
     - name: Build Debug APK
-      run: gradle assembleDebug -Pandroid.injected.signing.store.file=$(pwd)/debug.keystore -Pandroid.injected.signing.store.password=android -Pandroid.injected.signing.key.alias=androiddebugkey -Pandroid.injected.signing.key.password=android
+      run: gradle assembleDebug
 
+    # رفع ملف الـ APK الناتج لتقوم بتحميله
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
