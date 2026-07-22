@@ -1,0 +1,803 @@
+package com.example.ui
+
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ClearAll
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.R
+import com.example.data.TaskEntity
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TaskListScreen(
+    tasks: List<TaskEntity>,
+    timeState: CurrentTimeState,
+    stats: TaskStats,
+    selectedFilter: TaskFilter,
+    searchQuery: String,
+    onFilterSelect: (TaskFilter) -> Unit,
+    onSearchChange: (String) -> Unit,
+    onAutoSchedule: () -> Unit,
+    onClearCompleted: () -> Unit,
+    onToggleCompletion: (TaskEntity) -> Unit,
+    onToggleNotification: (TaskEntity) -> Unit,
+    onEditTask: (TaskEntity) -> Unit,
+    onDeleteTask: (TaskEntity) -> Unit,
+    onAddTaskClick: () -> Unit,
+    onBackToHome: () -> Unit,
+    onNavigateToWelcome: () -> Unit
+) {
+    Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = onAddTaskClick,
+                icon = { Icon(Icons.Default.Add, contentDescription = "إضافة مهمة") },
+                text = { Text("إضافة مهمة جديدة", fontWeight = FontWeight.Bold) },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.testTag("add_task_fab")
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // Top Bar Navigation
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    IconButton(
+                        onClick = onBackToHome,
+                        modifier = Modifier.testTag("back_to_home_btn")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "العودة للرئيسية",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Text(
+                        text = "جدول المهام التفصيلي 📋",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                TextButton(onClick = onNavigateToWelcome) {
+                    Icon(
+                        imageVector = Icons.Default.Home,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("الترحيب", fontSize = 13.sp)
+                }
+            }
+
+            // 1. Dynamic Synced Header Component
+            HeaderComponent(
+                timeState = timeState,
+                stats = stats
+            )
+
+            // 2. Control Bar (Filters, Smart Auto-Schedule, Search, Clear)
+            ControlBarComponent(
+                selectedFilter = selectedFilter,
+                onFilterSelect = onFilterSelect,
+                searchQuery = searchQuery,
+                onSearchChange = onSearchChange,
+                onAutoSchedule = onAutoSchedule,
+                onClearCompleted = onClearCompleted,
+                completedCount = stats.completed
+            )
+
+            // 3. Task Table Layout with explicit columns
+            TaskTableComponent(
+                tasks = tasks,
+                onToggleCompletion = onToggleCompletion,
+                onToggleNotification = onToggleNotification,
+                onEditTask = onEditTask,
+                onDeleteTask = onDeleteTask,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+fun HeaderComponent(
+    timeState: CurrentTimeState,
+    stats: TaskStats
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse_dot"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(12.dp)
+            .testTag("header_card"),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+        ) {
+            // Header Hero Banner Image
+            Image(
+                painter = painterResource(id = R.drawable.img_header_banner_1784731840186),
+                contentDescription = "Header Banner",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+
+            // Dark Gradient Overlay for text contrast
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.3f),
+                                Color.Black.copy(alpha = 0.85f)
+                            )
+                        )
+                    )
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Top row: App Name & System Time Sync Badge
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "الذكي | جدول المهام اليومية",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White
+                        )
+                        Text(
+                            text = "جدولة تلقائية وتتبع إنجاز مباشر",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+
+                    // Pulse Live System Sync Badge
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(20.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF10B981))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .scale(pulseScale)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF10B981))
+                            )
+                            Text(
+                                text = "تزامن حي",
+                                fontSize = 11.sp,
+                                color = Color.White,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                // Middle: Dynamic Live Date & Clock synchronized with phone system settings
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Column {
+                        Text(
+                            text = timeState.dayName.ifEmpty { "اليوم" },
+                            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold),
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                        Text(
+                            text = timeState.fullDate.ifEmpty { "..." },
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                    }
+
+                    Surface(
+                        color = Color.White.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = timeState.timeString.ifEmpty { "--:--:--" },
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+
+                // Bottom: Progress Gauge
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "مستوى إنجاز المهام اليومية",
+                            fontSize = 12.sp,
+                            color = Color.White.copy(alpha = 0.85f)
+                        )
+                        Text(
+                            text = "${stats.completed} من ${stats.total} مكتملة (${stats.percentage}%)",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                    LinearProgressIndicator(
+                        progress = { if (stats.total > 0) stats.completed.toFloat() / stats.total else 0f },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = MaterialTheme.colorScheme.secondary,
+                        trackColor = Color.White.copy(alpha = 0.2f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ControlBarComponent(
+    selectedFilter: TaskFilter,
+    onFilterSelect: (TaskFilter) -> Unit,
+    searchQuery: String,
+    onSearchChange: (String) -> Unit,
+    onAutoSchedule: () -> Unit,
+    onClearCompleted: () -> Unit,
+    completedCount: Int
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Search & Smart Actions Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchChange,
+                placeholder = { Text("بحث في المهام والتصنيفات...", fontSize = 13.sp) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "بحث",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                singleLine = true,
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("search_input"),
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                )
+            )
+
+            // Smart Auto-Schedule Button
+            Button(
+                onClick = onAutoSchedule,
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.testTag("auto_schedule_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("جدولة ذكية", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            }
+        }
+
+        // Filters and Clear Completed
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FilterChip(
+                    selected = selectedFilter == TaskFilter.ALL,
+                    onClick = { onFilterSelect(TaskFilter.ALL) },
+                    label = { Text("الكل", fontSize = 12.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    modifier = Modifier.testTag("filter_all")
+                )
+                FilterChip(
+                    selected = selectedFilter == TaskFilter.PENDING,
+                    onClick = { onFilterSelect(TaskFilter.PENDING) },
+                    label = { Text("المتبقية", fontSize = 12.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    modifier = Modifier.testTag("filter_pending")
+                )
+                FilterChip(
+                    selected = selectedFilter == TaskFilter.COMPLETED,
+                    onClick = { onFilterSelect(TaskFilter.COMPLETED) },
+                    label = { Text("المكتملة", fontSize = 12.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    modifier = Modifier.testTag("filter_completed")
+                )
+            }
+
+            if (completedCount > 0) {
+                TextButton(
+                    onClick = onClearCompleted,
+                    modifier = Modifier.testTag("clear_completed_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ClearAll,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("مسح المكتملة", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TaskTableComponent(
+    tasks: List<TaskEntity>,
+    onToggleCompletion: (TaskEntity) -> Unit,
+    onToggleNotification: (TaskEntity) -> Unit,
+    onEditTask: (TaskEntity) -> Unit,
+    onDeleteTask: (TaskEntity) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(12.dp)
+            .testTag("task_table_card"),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            TableHeaderRow()
+
+            Divider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            if (tasks.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Text(
+                            text = "لا توجد مهام مطابقة حالياً",
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "اضغط على زر \"إضافة مهمة جديد\" لبدء تنظيم يومك الذكي!",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    itemsIndexed(
+                        items = tasks,
+                        key = { _, task -> task.id }
+                    ) { index, task ->
+                        TaskTableRowItem(
+                            displayIndex = index + 1,
+                            task = task,
+                            onToggleCompletion = { onToggleCompletion(task) },
+                            onToggleNotification = { onToggleNotification(task) },
+                            onEdit = { onEditTask(task) },
+                            onDelete = { onDeleteTask(task) }
+                        )
+                        if (index < tasks.size - 1) {
+                            Divider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TableHeaderRow() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+            .padding(horizontal = 8.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "الرقم",
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.width(44.dp),
+            textAlign = TextAlign.Center
+        )
+
+        Text(
+            text = "محتوى المهمة",
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.weight(1f),
+            textAlign = TextAlign.Start
+        )
+
+        Text(
+            text = "الإنجاز",
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.width(64.dp),
+            textAlign = TextAlign.Center
+        )
+
+        Text(
+            text = "الوقت والتنبيه",
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.width(100.dp),
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun TaskTableRowItem(
+    displayIndex: Int,
+    task: TaskEntity,
+    onToggleCompletion: () -> Unit,
+    onToggleNotification: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val backgroundColor by animateColorAsState(
+        targetValue = if (task.isCompleted)
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        else MaterialTheme.colorScheme.surface,
+        label = "bg_color"
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(backgroundColor)
+            .clickable { onEdit() }
+            .padding(horizontal = 8.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(44.dp)
+                .padding(2.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                color = if (task.isCompleted) MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                else MaterialTheme.colorScheme.primaryContainer,
+                shape = CircleShape,
+                modifier = Modifier.size(28.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "$displayIndex",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = if (task.isCompleted) MaterialTheme.colorScheme.outline
+                        else MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 6.dp)
+        ) {
+            Text(
+                text = task.content,
+                fontSize = 14.sp,
+                fontWeight = if (task.isCompleted) FontWeight.Normal else FontWeight.SemiBold,
+                color = if (task.isCompleted) MaterialTheme.colorScheme.outline
+                else MaterialTheme.colorScheme.onSurface,
+                textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
+                lineHeight = 20.sp
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = task.category,
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                val (priorityBg, priorityFg) = when (task.priority) {
+                    "عالية" -> Color(0xFFFEE2E2) to Color(0xFFDC2626)
+                    "متوسطة" -> Color(0xFFFEF3C7) to Color(0xFFD97706)
+                    else -> Color(0xFFE0E7FF) to Color(0xFF4F46E5)
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(priorityBg)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = task.priority,
+                        fontSize = 10.sp,
+                        color = priorityFg,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier.width(64.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            IconButton(
+                onClick = onToggleCompletion,
+                modifier = Modifier
+                    .size(40.dp)
+                    .testTag("completion_toggle_${task.id}")
+            ) {
+                Icon(
+                    imageVector = if (task.isCompleted) Icons.Default.CheckCircle
+                    else Icons.Default.RadioButtonUnchecked,
+                    contentDescription = "الإنجاز",
+                    tint = if (task.isCompleted) Color(0xFF10B981)
+                    else MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier.width(100.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = task.timeSchedule,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                IconButton(
+                    onClick = onToggleNotification,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = if (task.hasNotification) Icons.Default.Notifications
+                        else Icons.Default.NotificationsOff,
+                        contentDescription = "التنبيه",
+                        tint = if (task.hasNotification) MaterialTheme.colorScheme.primary
+                        else Color.Gray,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DeleteOutline,
+                        contentDescription = "حذف",
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+    }
+}
