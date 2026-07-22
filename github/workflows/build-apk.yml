@@ -21,19 +21,20 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+    # إنشاء مفتاح توقيع مؤقت لضمان نجاح التوقيع
+    - name: Generate Debug Keystore
+      run: |
+        keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
     - name: Build Debug APK
-      run: ./gradlew assembleDebug
+      run: gradle assembleDebug -Pandroid.injected.signing.store.file=$(pwd)/debug.keystore -Pandroid.injected.signing.store.password=android -Pandroid.injected.signing.key.alias=androiddebugkey -Pandroid.injected.signing.key.password=android
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: app-debug-apk
         path: app/build/outputs/apk/debug/app-debug.apk
-
         
