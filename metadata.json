@@ -1,0 +1,6 @@
+{
+  "name": "الذكي - جدول المهام اليومية الذكي",
+  "description": "تطبيق جدول المهام اليومية الذكي مع جدولة تلقائية ودعم كامل للغة العربية",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
