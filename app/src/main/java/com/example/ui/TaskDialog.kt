@@ -17,11 +17,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +33,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,8 +49,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.TaskEntity
+import java.util.Locale
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TaskDialog(
     initialTask: TaskEntity? = null,
@@ -60,12 +65,19 @@ fun TaskDialog(
     var priority by remember { mutableStateOf(initialTask?.priority ?: "متوسطة") }
 
     var isError by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
 
     val categories = listOf("عام", "عبادة", "عمل", "تخطيط", "تعلم", "صحة", "شخصي")
     val priorities = listOf("عالية", "متوسطة", "عادية")
     val timePresets = listOf(
         "06:00 ص", "08:00 ص", "09:30 ص", "10:30 ص", "12:00 م",
         "02:00 م", "04:30 م", "06:30 م", "08:00 م", "09:30 م"
+    )
+
+    val timePickerState = rememberTimePickerState(
+        initialHour = 8,
+        initialMinute = 0,
+        is24Hour = false
     )
 
     AlertDialog(
@@ -113,18 +125,37 @@ fun TaskDialog(
                 Column {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.AccessTime,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "وقت التنفيذ: $timeSchedule",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccessTime,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "وقت التنفيذ: $timeSchedule",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+
+                        // Button to open TimePicker
+                        TextButton(
+                            onClick = { showTimePicker = true },
+                            modifier = Modifier.testTag("open_time_picker_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "تحديد وقت مخصص",
+                                modifier = Modifier.padding(end = 4.dp)
+                            )
+                            Text("وقت مخصص", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     FlowRow(
@@ -285,4 +316,49 @@ fun TaskDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(20.dp)
     )
+
+    // TimePicker Dialog Modal
+    if (showTimePicker) {
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val hour = timePickerState.hour
+                        val minute = timePickerState.minute
+                        val isAm = hour < 12
+                        val displayHour = when (val h = hour % 12) {
+                            0 -> 12
+                            else -> h
+                        }
+                        val period = if (isAm) "ص" else "م"
+                        timeSchedule = String.format(Locale.getDefault(), "%02d:%02d %s", displayHour, minute, period)
+                        showTimePicker = false
+                    },
+                    modifier = Modifier.testTag("confirm_custom_time_btn")
+                ) {
+                    Text("تأكيد الوقت")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) {
+                    Text("إلغاء")
+                }
+            },
+            title = {
+                Text("حدد وقت تنفيذ المهمة", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    TimePicker(state = timePickerState)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
 }
+
